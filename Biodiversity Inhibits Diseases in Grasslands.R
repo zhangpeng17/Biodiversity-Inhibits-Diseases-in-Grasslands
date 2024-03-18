@@ -1,5 +1,5 @@
 
-setwd("C:\\Users\\Dell\\Desktop\\zp\\Others\\Jianghongying")
+setwd("C:\\Users\\Dell\\Desktop\\zp\\Others\\Zhangpeng")
 
 library(tidyverse)
 library(readxl)
@@ -16,10 +16,10 @@ library(glmmTMB)
 library(piecewiseSEM)
 library(tidybayes)
 
-mytheme <- theme_test()+theme(axis.title.x = element_text(size = 24, face = "bold", colour = "black"),
-                              axis.title.y = element_text(size = 24, face = "bold", colour = "black"),
-                              axis.text.x = element_text(size = 20, colour = "black",hjust = 0.5),
-                              axis.text.y = element_text(size = 20, colour = "black"))+
+mytheme <- theme_test()+theme(axis.title.x = element_text(size = 12, face = "bold", colour = "black"),
+                              axis.title.y = element_text(size = 12, face = "bold", colour = "black"),
+                              axis.text.x = element_text(size = 10, colour = "black",hjust = 0.5),
+                              axis.text.y = element_text(size = 10, colour = "black"))+
   theme(panel.border = element_rect(fill=NA,color="black", linewidth = 1, linetype="solid"))+
   #theme(panel.grid = element_blank())+
   theme(plot.margin = unit(x = c(0.3,0.3,0.2,0.2),units = "cm"))+
@@ -156,7 +156,7 @@ data_all_tra <- data_all %>%
   gather(key = 'Type',value = 'PL',-c(Site,Plot,SR))
 
 
-####  Linear mixed-effects models   ####
+####  Linear mixed-effects models  for fig 1b ####
 model <- lmer(FishZ_PL~SR+(1|Site),data_all)
 model2 <- lmer(FishZ_Turn~SR+(1|Site),data_all)
 model3 <- lmer(FishZ_ITV_PL~SR+(1|Site),data_all)
@@ -175,313 +175,233 @@ Sum_var = var(fm1)+rvd1$vcov[1]+ rvd1$vcov[2]
 expla_turn=var(fm2)/Sum_var
 expla_itv=var(fm3)/Sum_var
 
+expla_turn/(expla_turn+expla_itv)
+expla_itv/(expla_turn+expla_itv)
+
 ## calculate slope and explanation for each general linear model each site ####
-slope <- matrix(ncol = 6,nrow = 63)
+slope <- matrix(ncol = 9,nrow = 63)
 i=1
 for (i in 1:63) {
   data_lm <- filter(data_all,Site == env$Site[i])
-  mod1 <- lm(FishZ_PL~SR,data_lm)
-  mod2 <- lm(FishZ_Turn~SR,data_lm)
-  mod3 <- lm(FishZ_ITV_PL~SR,data_lm)
+  mod1 <- lm(FishZ_PL~SR,data_lm)%>% summary()
+  mod2 <- lm(FishZ_Turn~SR,data_lm)%>% summary()
+  mod3 <- lm(FishZ_ITV_PL~SR,data_lm)%>% summary()
   anova_decomp <- trait.flex.anova(~SR, FishZ_PL, FishZ_Turn, data=data_lm)
   
   slope[i,1] <- env$Site[i]
-  slope[i,2] <- mod1$coefficients[2]
-  slope[i,3] <- mod2$coefficients[2]
-  slope[i,4] <- mod3$coefficients[2]
+  slope[i,2] <- mod1$coefficients[2,1]
+  slope[i,3] <- mod2$coefficients[2,1]
+  slope[i,4] <- mod3$coefficients[2,1]
   slope[i,5] <- anova_decomp$RelSumSq[1,1:2][1]$Turnover
   slope[i,6] <- anova_decomp$RelSumSq[1,1:2][2]$Intraspec.
-  
+  slope[i,7] <- mod1$coefficients[2,4]
+  slope[i,8] <- mod2$coefficients[2,4]
+  slope[i,9] <- mod3$coefficients[2,4]
 }
 slope <- slope %>% as.data.frame()
 colnames(slope)[1] <- "Slope"
 slope[is.na(slope)] <- 0
-colnames(slope) <- c('Slope','PL','Proness','ITV','ex_Turnover','ex_ITV')
+colnames(slope) <- c('Slope','PL','STP','ITV','ex_Turnover','ex_ITV','P-PL','P-STP','P-ITV')
 
-slope
-
-
-#### Linear mixed-effects model and General linear model for Fig2  ####
-Site_data <- env%>% 
-  gather(key = 'Type',value = 'Slope',-c(Site,MAT,MAP,LON,LAT,ALT,SWC,SWC_2mm,
-                                         pH,Potential,STC,STN,STP,Soil_AP,NH4N,NO3N,
-                                         TIC,ex_Turnover,ex_ITV,rate,NestedT))
+slope %>% write.csv('Slpoe.csv')
 
 
-model1 <- lm(Slope ~ LON,data = Site_data %>% filter(Type=='PL')) ## Not Significant
+#### Linear mixed-effects model and General linear model for fig 2  ####
+Site_data <- env %>% 
+  gather(key = 'Type',value = 'Slope',-c(Site,MAT,MAP,LON,LAT,ALT,ex_Turnover,ex_ITV,rate,NestedT,P.PL,P.STP,P.ITV,GrasslandType))
+
+model <- lm(Slope~NestedT,data = Site_data)
+summary(model)
+
+model <- lm(Slope~GrasslandType,data = Site_data %>% filter(Type=='Slope_PL') )
+summary(model);anova(model)
+model <- lm(Slope~GrasslandType,data = Site_data %>% filter(Type=='Slope_STP') )
+summary(model);anova(model)
+model <- lm(Slope~GrasslandType,data = Site_data %>% filter(Type=='Slope_ITV') )
+summary(model);anova(model)
+
+library(multcomp)
+par(mar=c(4,4,7,4))
+plot(cld(glht(model, linfct=mcp(GrasslandType="Tukey")),level = 0.05,col="lightgrey"))
+TukeyHSD(model)
+
+model1 <- lm(Slope ~ LON,data = Site_data %>% filter(Type=='Slope_PL')) ## Not Significant
 summary(model1)
-a1 <- anova(model1)
-model2 <- lm(Slope ~ LAT,data = Site_data %>% filter(Type=='PL')) ## Not Significant
+anova(model1)
+model2 <- lm(Slope ~ LAT,data = Site_data %>% filter(Type=='Slope_PL')) ## Not Significant
 summary(model2)
-a2 <- anova(model2)
-model3 <- lm(Slope ~ ALT,data = Site_data %>% filter(Type=='PL')) ## Marginally Significant
+anova(model2)
+model3 <- lm(Slope ~ ALT,data = Site_data %>% filter(Type=='Slope_PL')) ## Marginally Significant
 summary(model3)
-a3 <- anova(model3)
-model4 <- lm(Slope ~ MAT,data = Site_data %>% filter(Type=='PL')) ## Significant
+anova(model3)
+model4 <- lm(Slope ~ MAT,data = Site_data %>% filter(Type=='Slope_PL')) ## Significant
 summary(model4)
-a4 <- anova(model4)
-model5 <- lm(Slope ~ MAP,data = Site_data %>% filter(Type=='PL')) ## Not Significant
+anova(model4)
+model5 <- lm(Slope ~ MAP,data = Site_data %>% filter(Type=='Slope_PL')) ## Not Significant
 summary(model5)
-a5 <- anova(model5)
-model6 <- lm(Slope ~ SWC,data = Site_data %>% filter(Type=='PL')) ## Not Significant
-summary(model6)
-a6 <- anova(model6)
-model7 <- lm(Slope ~ pH,data = Site_data %>% filter(Type=='PL')) ## Marginally Significant
-summary(model7)
-a7 <- anova(model7)
-model8 <- lm(Slope ~ STC,data = Site_data %>% filter(Type=='PL')) ## Significant
-summary(model8)
-a8 <- anova(model8)
-model9 <- lm(Slope ~ STN,data = Site_data %>% filter(Type=='PL')) ## Not Significant
-summary(model9)
-a9 <- anova(model9)
-model10 <- lm(Slope ~ STP,data = Site_data %>% filter(Type=='PL')) ## Not Significant
-summary(model10)
-a10 <- anova(model10)
-model11 <- lm(Slope ~ Soil_AP,data = Site_data %>% filter(Type=='PL')) ## Not Significant
-summary(model11)
-a11 <- anova(model11)
-model12 <- lm(Slope ~ NH4N,data = Site_data %>% filter(Type=='PL')) ## Significant
-summary(model12)
-a12 <- anova(model12)
-model13 <- lm(Slope ~ NO3N,data = Site_data %>% filter(Type=='PL')) ## Not Significant
-summary(model13)
-a13 <- anova(model13)
-model14 <- lm(Slope ~ TIC,data = Site_data %>% filter(Type=='PL')) ## Not Significant
-summary(model14)
-a14 <- anova(model14)
+anova(model5)
 
 
-model1 <- lm(Slope ~ LON,data = Site_data %>% filter(Type=='Proness')) ## Not Significant
+
+model1 <- lm(Slope ~ LON,data = Site_data %>% filter(Type=='Slope_STP')) ## Not Significant
 summary(model1)
-a1 <- anova(model1)
-model2 <- lm(Slope ~ LAT,data = Site_data %>% filter(Type=='Proness')) ##  Not Significant
+anova(model1)
+model2 <- lm(Slope ~ LAT,data = Site_data %>% filter(Type=='Slope_STP')) ##  Not Significant
 summary(model2)
-a2 <- anova(model2)
-model3 <- lm(Slope ~ ALT,data = Site_data %>% filter(Type=='Proness')) ## Marginally Significant
+anova(model2)
+model3 <- lm(Slope ~ ALT,data = Site_data %>% filter(Type=='Slope_STP')) ## Marginally Significant
 summary(model3)
-a3 <- anova(model3)
-model4 <- lm(Slope ~ MAT,data = Site_data %>% filter(Type=='Proness')) ## Significant
+anova(model3)
+model4 <- lm(Slope ~ MAT,data = Site_data %>% filter(Type=='Slope_STP')) ## Significant
 summary(model4)
-a4 <- anova(model4)
-model5 <- lm(Slope ~ MAP,data = Site_data %>% filter(Type=='Proness')) ## Marginally Significant
+anova(model4)
+model5 <- lm(Slope ~ MAP,data = Site_data %>% filter(Type=='Slope_STP')) ## Marginally Significant
 summary(model5)
-a5 <- anova(model5)
-model6 <- lm(Slope ~ SWC,data = Site_data %>% filter(Type=='Proness')) ## Not Significant
-summary(model6)
-a6 <- anova(model6)
-model7 <- lm(Slope ~ pH,data = Site_data %>% filter(Type=='Proness')) ## Not Significant
-summary(model7)
-a7 <- anova(model7)
-model8 <- lm(Slope ~ STC,data = Site_data %>% filter(Type=='Proness')) ## Significant
-summary(model8)
-a8 <- anova(model8)
-model9 <- lm(Slope ~ STN,data = Site_data %>% filter(Type=='Proness')) ## Not Significant
-summary(model9)
-a9 <- anova(model9)
-model10 <- lm(Slope ~ STP,data = Site_data %>% filter(Type=='Proness')) ## Not Significant
-summary(model10)
-a10 <- anova(model10)
-model11 <- lm(Slope ~ Soil_AP,data = Site_data %>% filter(Type=='Proness')) ## Not Significant
-summary(model11)
-a11 <- anova(model11)
-model12 <- lm(Slope ~ NH4N,data = Site_data %>% filter(Type=='Proness')) ## Marginally Significant
-summary(model12)
-a12 <- anova(model12)
-model13 <- lm(Slope ~ NO3N,data = Site_data %>% filter(Type=='Proness')) ## Not Significant
-summary(model13)
-a13 <- anova(model13)
-model14 <- lm(Slope ~ TIC,data = Site_data %>% filter(Type=='Proness')) ## Not Significant
-summary(model14)
-a14 <- anova(model14)
+anova(model5)
 
 
-model1 <- lm(Slope ~ LON,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
+
+model1 <- lm(Slope ~ LON,data = Site_data %>% filter(Type=='Slope_ITV')) ## Not Significant
 summary(model1)
-a1 <- anova(model1)
-model2 <- lm(Slope ~ LAT,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
+anova(model1)
+model2 <- lm(Slope ~ LAT,data = Site_data %>% filter(Type=='Slope_ITV')) ## Not Significant
 summary(model2)
-a2 <- anova(model2)
-model3 <- lm(Slope ~ ALT,data = Site_data %>% filter(Type=='ITV_PL')) ## Marginally Significant
+anova(model2)
+model3 <- lm(Slope ~ ALT,data = Site_data %>% filter(Type=='Slope_ITV')) ## Marginally Significant
 summary(model3)
-a3 <- anova(model3)
-model4 <- lm(Slope ~ MAT,data = Site_data %>% filter(Type=='ITV_PL')) ## Significant
+anova(model3)
+model4 <- lm(Slope ~ MAT,data = Site_data %>% filter(Type=='Slope_ITV')) ## Significant
 summary(model4)
-a4 <- anova(model4)
-model5 <- lm(Slope ~ MAP,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
+anova(model4)
+model5 <- lm(Slope ~ MAP,data = Site_data %>% filter(Type=='Slope_ITV')) ## Not Significant
 summary(model5)
-a5 <- anova(model5)
-model6 <- lm(Slope ~ SWC,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
-summary(model6)
-a6 <- anova(model6)
-model7 <- lm(Slope ~ pH,data = Site_data %>% filter(Type=='ITV_PL')) ## Significant
-summary(model7)
-a7 <- anova(model7)
-model8 <- lm(Slope ~ STC,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
-summary(model8)
-a8 <- anova(model8)
-model9 <- lm(Slope ~ STN,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
-summary(model9)
-a9 <- anova(model9)
-model10 <- lm(Slope ~ STP,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
-summary(model10)
-a10 <- anova(model10)
-model11 <- lm(Slope ~ Soil_AP,data = Site_data %>% filter(Type=='ITV_PL')) ## Marginally Significant
-summary(model11)
-a11 <- anova(model11)
-model12 <- lm(Slope ~ NH4N,data = Site_data %>% filter(Type=='ITV_PL')) ## Significant
-summary(model12)
-a12 <- anova(model12)
-model13 <- lm(Slope ~ NO3N,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
-summary(model13)
-a13 <- anova(model13)
-model14 <- lm(Slope ~ TIC,data = Site_data %>% filter(Type=='ITV_PL')) ## Not Significant
-summary(model14)
-a14 <- anova(model14)
+anova(model5)
 
 
-model1 <- lm(log(rate) ~ LON,data = Site_data) ## Significant
+
+model1 <- lm(log(rate) ~ LON,data = env) ## Significant
 summary(model1)
-a1 <- anova(model1)
-model2 <- lm(log(rate) ~ LAT,data = Site_data) ## Significant
+anova(model1)
+model2 <- lm(log(rate) ~ LAT,data = env) ## Marginally significant
 summary(model2)
-a2 <- anova(model2)
-model3 <- lm(log(rate) ~ ALT,data = Site_data) ## Significant
+anova(model2)
+model3 <- lm(log(rate) ~ ALT,data = env) ## Significant
 summary(model3)
-a3 <- anova(model3)
-model4 <- lm(log(rate) ~ MAT,data = Site_data) ## Significant
+anova(model3)
+model4 <- lm(log(rate) ~ MAT,data = env) ## Significant
 summary(model4)
-a4 <- anova(model4)
-model5 <- lm(log(rate) ~ MAP,data = Site_data) ## Not Significant
+anova(model4)
+model5 <- lm(log(rate) ~ MAP,data = env) ## Not Significant
 summary(model5)
-a5 <- anova(model5)
-model6 <- lm(log(rate) ~ SWC,data = Site_data) ## Not Significant
-summary(model6)
-a6 <- anova(model6)
-model7 <- lm(log(rate) ~ pH,data = Site_data) ## Not Significant
-summary(model7)
-a7 <- anova(model7)
-model8 <- lm(log(rate) ~ STC,data = Site_data) ## Significant
-summary(model8)
-a8 <- anova(model8)
-model9 <- lm(log(rate) ~ STN,data = Site_data) ## Not Significant
-summary(model9)
-a9 <- anova(model9)
-model10 <- lm(log(rate) ~ STP,data = Site_data) ## Not Significant
-summary(model10)
-a10 <- anova(model10)
-model11 <- lm(log(rate) ~ Soil_AP,data = Site_data) ## Significant
-summary(model11)
-a11 <- anova(model11)
-model12 <- lm(log(rate) ~ NH4N,data = Site_data) ## Not Significant
-summary(model12)
-a12 <- anova(model12)
-model13 <- lm(log(rate) ~ NO3N,data = Site_data) ## Significant
-summary(model13)
-a13 <- anova(model13)
-model14 <- lm(log(rate) ~ TIC,data = Site_data) ## Not Significant
-summary(model14)
-a14 <- anova(model14)
+anova(model5)
 
-#### Linear mixed-effects model and General linear model for Fig 3 #### 
+
+#### Linear mixed-effects model and General linear model for fig 3 #### 
 
 model1 <- lm(NestedT ~ LON,data = env) ## Significant
 summary(model1)
-a1 <- anova(model1)
+anova(model1)
 model2 <- lm(NestedT ~ LAT,data = env) ##  Significant
 summary(model2)
-a2 <- anova(model2)
+anova(model2)
 model3 <- lm(NestedT ~ ALT,data = env) ##  Significant
 summary(model3)
-a3 <- anova(model3)
+anova(model3)
 model4 <- lm(NestedT ~ MAT,data = env) ## Significant
 summary(model4)
-a4 <- anova(model4)
+anova(model4)
 model5 <- lm(NestedT ~ MAP,data = env) ## Not Significant
 summary(model5)
-a5 <- anova(model5)
-model6 <- lm(NestedT ~ SWC,data = env) ## Not Significant
-summary(model6)
-a6 <- anova(model6)
-model7 <- lm(NestedT ~ pH,data = env) ## Not Significant
-summary(model7)
-a7 <- anova(model7)
-model8 <- lm(NestedT ~ STC,data = env) ## Not Significant
-summary(model8)
-a8 <- anova(model8)
-model9 <- lm(NestedT ~ STN,data = env) ## Significant
-summary(model9)
-a9 <- anova(model9)
-model10 <- lm(NestedT ~ STP,data = env) ## Not Significant
-summary(model10)
-a10 <- anova(model10)
-model11 <- lm(NestedT ~ Soil_AP,data = env) ## Not Significant
-summary(model11)
-a11 <- anova(model11)
-model12 <- lm(NestedT ~ NH4N,data = env) ## Not Significant
-summary(model12)
-a12 <- anova(model12)
-model13 <- lm(NestedT ~ NO3N,data = env) ## Not Significant
-summary(model13)
-a13 <- anova(model13)
-model14 <- lm(NestedT ~ TIC,data = env) ## Not Significant
-summary(model14)
-a14 <- anova(model14)
+anova(model5)
 
+
+data_PL_env <- env %>% select(Site,LON,LAT,ALT,MAT,MAP) %>% left_join(data_all %>% select(Site,PL,FishZ_PL),multiple = "all" )
+
+model1 <- lmer(FishZ_PL ~ LON+(1|Site),data = data_PL_env) ## Significant
+summary(model1)
+anova(model1)
+model2 <- lmer(FishZ_PL ~ LAT+(1|Site),data = data_PL_env) ##  Marginally Significant
+summary(model2)
+anova(model2)
+model3 <- lmer(FishZ_PL ~ log(ALT)+(1|Site),data = data_PL_env) ## Significant
+summary(model3)
+anova(model3)
+model4 <- lmer(FishZ_PL ~ MAT+(1|Site),data = data_PL_env) ## Significant
+summary(model4)
+anova(model4)
+model5 <- lmer(FishZ_PL ~ MAP+(1|Site),data = data_PL_env) ## Significant
+summary(model5)
+anova(model5)
 
 
 #### SEM for Fig 4 a  ####
-sem1 <- env %>% dplyr::select(MAT,MAP,Site) %>% left_join(data_all) %>% na.omit() %>% mutate(SR_MAT=SR*MAT,SR_MAP=SR*MAP)
 
-model <- psem(lmer(FishZ_Turn~SR+MAT+MAP+SR:MAP+SR:MAT+(1|Site),sem1),
-              lmer(FishZ_ITV_PL~SR+MAT+MAP+SR:MAP+SR:MAT+(1|Site),sem1),
+sem1 <- env %>% dplyr::select(MAT,MAP,Site) %>% left_join(data_all,multiple = "all") %>% mutate(SR = scale(SR),
+                                                                                             MAT = scale(MAT),
+                                                                                             MAP = scale(MAP),
+                                                                                             SR_MAT=scale(SR)*scale(MAT),
+                                                                                             SR_MAP=scale(SR)*scale(MAP))
+
+model <- psem(lme(FishZ_Turn~SR+MAT+MAP+SR_MAP+SR_MAT,random= ~ 1|Site,sem1),
+              lme(FishZ_ITV_PL~SR+MAT+MAP+SR_MAP+SR_MAT,random= ~ 1|Site,sem1),
               FishZ_Turn%~~%FishZ_ITV_PL)
 summary(model)
+piecewiseSEM::rsquared(model,method='theoretical')
 
-model <- psem(lmer(FishZ_Turn~SR+MAT+MAP+SR_MAP+SR_MAT+(1|Site),sem1),
-              lmer(FishZ_ITV_PL~SR+MAT+MAP+SR_MAP+SR_MAT+(1|Site),sem1),
-              FishZ_Turn%~~%FishZ_ITV_PL)
-summary(model)
+lme(FishZ_Turn~SR+MAT+MAP+SR_MAP+SR_MAT,random= ~ 1|Site,sem1) %>% car::vif()
+lme(FishZ_ITV_PL~SR+MAT+MAP+SR_MAP+SR_MAT,random= ~ 1|Site,sem1) %>% car::vif()
+
+
 
 ####   Partial regression plot for Fig 4 b  ####
 ## Species turnover ~ SR:MAT
-yresid <- resid(lmer(FishZ_Turn~SR+MAT+MAP+SR_MAP+(1|Site),sem1))
-xresid <- resid(lmer(SR_MAT~SR+MAP+SR_MAP+MAT+(1|Site),sem1))
-lm(yresid~xresid) %>% summary()
-p1 <- data.frame(yresid,xresid) %>% ggplot(aes(xresid,yresid))+
+# yresid <- resid(lmer(FishZ_Turn~SR+MAT+MAP+SR_MAP+(1|Site),sem1))
+# xresid <- resid(lmer(SR_MAT~SR+MAP+SR_MAP+MAT+(1|Site),sem1))
+resid1 <- partialResid(FishZ_Turn ~ SR_MAT,model)
+lm(yresid~xresid,resid1) %>% summary()
+
+p1 <- resid1 %>% ggplot(aes(xresid,yresid))+
   geom_point(size=3,shape=1,color="#F39B7FFF")+
   geom_smooth(method = 'lm',color='#0225F8',linewidth=0.5)+
   mytheme+
   labs(x='',y='Species turnover effect | Others')
 
 ## Species turnover ~ SR:MAP
-yresid <- resid(lmer(FishZ_Turn~SR+MAT+MAP+SR_MAT+(1|Site),sem1))
-xresid <- resid(lmer(SR_MAP~SR+MAP+SR_MAT+MAT+(1|Site),sem1))
-lm(yresid~xresid) %>% anova()
-p2 <- data.frame(yresid,xresid) %>% ggplot(aes(xresid,yresid))+
+# yresid <- resid(lmer(FishZ_Turn~SR+MAT+MAP+SR_MAT+(1|Site),sem1))
+# xresid <- resid(lmer(SR_MAP~SR+MAP+SR_MAT+MAT+(1|Site),sem1))
+resid1 <- partialResid(FishZ_Turn ~ SR_MAP,model)
+lm(yresid~xresid,resid1) %>% summary()
+
+p2 <- resid1 %>% ggplot(aes(xresid,yresid))+
   geom_point(size=3,shape=1,color="#F39B7FFF")+
   geom_smooth(method = 'lm',color='#0CA133',linewidth=0.5)+
   mytheme+
   labs(x='',y='')
 
-yresid <- resid(lmer(FishZ_ITV_PL~SR+MAT+MAP+SR_MAP+(1|Site),sem1))
-xresid <- resid(lmer(SR_MAT~SR+MAP+SR_MAP+MAT+(1|Site),sem1))
-p3 <- data.frame(yresid,xresid) %>% ggplot(aes(xresid,yresid))+
+# yresid <- resid(lmer(FishZ_ITV_PL~SR+MAT+MAP+SR_MAP+(1|Site),sem1))
+# xresid <- resid(lmer(SR_MAT~SR+MAP+SR_MAP+MAT+(1|Site),sem1))
+resid1 <- partialResid(FishZ_ITV_PL ~ SR_MAT,model)
+lm(yresid~xresid,resid1) %>% summary()
+
+p3 <- resid1 %>% ggplot(aes(xresid,yresid))+
   geom_point(size=3,shape=1,color="#8491B4FF")+
   geom_smooth(method = 'lm',color='#0225F8',linewidth=0.5)+
   mytheme+
   labs(x='SR:MAT | Others',y='Intraspecific variation | Others')
 
-yresid <- resid(lmer(FishZ_ITV_PL~SR+MAT+MAP+SR_MAT+(1|Site),sem1))
-xresid <- resid(lmer(SR_MAP~SR+MAP+MAT+SR_MAT+(1|Site),sem1))
-p4 <- data.frame(yresid,xresid) %>% ggplot(aes(xresid,yresid))+
+# yresid <- resid(lmer(FishZ_ITV_PL~SR+MAT+MAP+SR_MAT+(1|Site),sem1))
+# xresid <- resid(lmer(SR_MAP~SR+MAP+MAT+SR_MAT+(1|Site),sem1))
+resid1 <- partialResid(FishZ_ITV_PL ~ SR_MAP,model)
+lm(yresid~xresid,resid1) %>% summary()
+
+p4 <- resid1 %>% ggplot(aes(xresid,yresid))+
   geom_point(size=3,shape=1,color="#8491B4FF")+
   #geom_smooth(method = 'lm',color='#0225F8')+
   mytheme+
   labs(x='SR:MAP | Others',y='')
 
-p0 <- ggarrange(p1,p2,p3,p4,nrow = 2,ncol = 2,labels = c('a','b','c','d'),align = 'hv',
+p0 <- ggarrange(p1,p2,p3,p4,nrow = 2,ncol = 2,align = 'hv',
                 label.x = 0.23,label.y = 0.95,font.label = list(size = 12, face = "bold"))
 p0
-ggsave('SEM_partial.tiff',height = 6,width = 6)
+ggsave('SEM_partial2.tiff',height = 6,width = 6)
 
