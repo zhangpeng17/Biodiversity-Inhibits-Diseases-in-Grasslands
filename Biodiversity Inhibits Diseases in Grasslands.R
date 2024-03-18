@@ -1,10 +1,11 @@
 
-setwd("C:\\Users\\Dell\\Desktop\\zp\\Others\\Zhangpeng")
+setwd("C:\\Users\\Dell\\Desktop\\zp\\Zhangpeng")
 
 library(tidyverse)
 library(readxl)
 library(lme4)
 library(lmerTest)
+library(nlme)
 library(ggpubr)
 library(viridis)
 library(ggsci)
@@ -203,7 +204,7 @@ colnames(slope)[1] <- "Slope"
 slope[is.na(slope)] <- 0
 colnames(slope) <- c('Slope','PL','STP','ITV','ex_Turnover','ex_ITV','P-PL','P-STP','P-ITV')
 
-slope %>% write.csv('Slpoe.csv')
+#slope %>% write.csv('Slpoe.csv')
 
 
 #### Linear mixed-effects model and General linear model for fig 2  ####
@@ -219,11 +220,6 @@ model <- lm(Slope~GrasslandType,data = Site_data %>% filter(Type=='Slope_STP') )
 summary(model);anova(model)
 model <- lm(Slope~GrasslandType,data = Site_data %>% filter(Type=='Slope_ITV') )
 summary(model);anova(model)
-
-library(multcomp)
-par(mar=c(4,4,7,4))
-plot(cld(glht(model, linfct=mcp(GrasslandType="Tukey")),level = 0.05,col="lightgrey"))
-TukeyHSD(model)
 
 model1 <- lm(Slope ~ LON,data = Site_data %>% filter(Type=='Slope_PL')) ## Not Significant
 summary(model1)
