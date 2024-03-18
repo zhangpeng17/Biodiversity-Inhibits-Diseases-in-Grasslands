@@ -1,5 +1,5 @@
 
-setwd("C:\\Users\\Dell\\Desktop\\zp\\Zhangpeng")
+setwd("C:\\Users\\Dell\\Desktop\\Paper\\Biodiversity-Inhibits-Diseases-in-Grasslands-main")
 
 library(tidyverse)
 library(readxl)
@@ -137,7 +137,7 @@ trait.flex.anova <-
     res
   }
 ##  Read data   #### 
-env <- read.csv('Supplementary Data 1.csv')
+env <- read.table('Supplementary Data 1.txt',header = TRUE,sep = ",")
 env
 
 ggplot(env)+
@@ -146,7 +146,7 @@ ggplot(env)+
   scale_x_continuous(breaks = seq(-7,9,3))+
   labs(x = "MAT",y = "MAP")
 
-data_all <- read.csv('Supplementary Data 2.csv')
+data_all <- read.table('Supplementary Data 2.txt',header = TRUE,sep = ",")
 data_all <- data_all%>% mutate(FishZ_ITV_PL=0.5*log((1+ITV_PL+0.0001)/(1-ITV_PL-0.0001)),  ## Fisher Z transformation 
                                FishZ_PL=0.5*log((1+PL+0.0001)/(1-PL-0.0001)),
                                FishZ_Turn=0.5*log((1+Proness+0.0001)/(1-Proness-0.0001)))
