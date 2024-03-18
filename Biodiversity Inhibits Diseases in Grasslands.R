@@ -25,9 +25,7 @@ mytheme <- theme_test()+theme(axis.title.x = element_text(size = 12, face = "bol
   #theme(panel.grid = element_blank())+
   theme(plot.margin = unit(x = c(0.3,0.3,0.2,0.2),units = "cm"))+
   theme(legend.text = element_text(size = 14, colour = "black"))+
-  theme(plot.title = element_text(size = 25,          #字体大小
-                                  hjust = 0.5,          #字体左右的位置
-                                  angle = 0))
+  theme(plot.title = element_text(size = 25, hjust = 0.5, angle = 0))
 
 trait.flex.anova <-
   function(formula, specif.avg, const.avg, ...) 
