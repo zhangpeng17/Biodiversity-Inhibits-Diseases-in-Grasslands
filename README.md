@@ -23,10 +23,10 @@ GrasslandType: Grassland type of each site (including meadow steppe, typical ste
 
 Description of Supplementary Data 2
 
-Site
-SR:
-Plot:
-PL:
-Proness:
-ITV_PL:
-NestedT:
+Site: Sampling site
+SR: Species richness
+Plot: ID of plot
+PL: Pathogen load of each plot
+Proness: Species turnover effect of each plot
+ITV_PL: Intraspecific variation of each plot
+NestedT: Community nestedness
